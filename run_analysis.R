@@ -11,8 +11,10 @@ run_analysis <- function(){
 	##unzip("humanActivityData.zip")	
 	testdataLocation<-"./UCI HAR Dataset/test/X_test.txt"
 	testlabelLocation<-"./UCI HAR Dataset/test/y_test.txt"
+	testsubjectLocation<-"./UCI HAR Dataset/test/subject_test.txt"
 	traindataLocation<-"./UCI HAR Dataset/train/X_train.txt"
 	trainlabelLocation<-"./UCI HAR Dataset/train/y_train.txt"
+	trainsubjectLocation<-"./UCI HAR Dataset/train/subject_train.txt"
 	
 	activitiesLocation<-"./UCI HAR Dataset/activity_labels.txt"
 	
@@ -22,8 +24,10 @@ run_analysis <- function(){
 	#load separate datasets into R tables
 	testD<-read.table(testdataLocation)
 	testDlab<-read.table(testlabelLocation)
+	testDsubj<-read.table(testsubjectLocation)
 	trainD<-read.table(traindataLocation)
 	trainDlab<-read.table(trainlabelLocation)
+	trainDsubj<-read.table(trainsubjectLocation)
 	features<-read.table(featuresLocation)
 	activity_names<-read.table(activitiesLocation)
 	
@@ -76,6 +80,9 @@ run_analysis <- function(){
 	numlabels<-nrow(labelchunk)
 	newlabs<-matrix("character", nrow = numlabels, ncol = 1)
 	
+	# merge the train and test subjects
+	subjchunk<-rbind(trainDsubj,testDsubj)
+	
 	# create new column vector with activity names rather than numbers
 	for(i in 1:numlabels){
 		
@@ -84,12 +91,24 @@ run_analysis <- function(){
 	}
 	
 	combined<-cbind(mean_std,newlabs)
+	combined<-cbind(subjchunk,combined)
 	
 	# name the newlabs column
-	names(combined)[66] <- "activity"
+	colnames(combined)[colnames(combined)=="newlabs"]<-"Activity"
+	colnames(combined)[colnames(combined)=="V1"]<-"Subject"
 	
+	# group the different measurements according to activity and subject
+	comboMelt<-melt(combined,id=c("Activity","Subject"),measure.vars=c(2:66))
 	
+	# change type of Subject to factor
+	comboMelt$Subject<-as.factor(comboMelt$Subject)
 	
+	# create an independent data set with average of each variable for each activity
+	castAvg<-dcast(comboMelt, Activity + Subject ~ variable, mean)
 	
+	# save new data set as a tab delimited text file
+	write.table(castAvg,"./tidy_data_set.txt",sep="\t")
+	
+		
 	
 }
